@@ -1,19 +1,45 @@
 import numpy as np
 from numpy.linalg import inv
-from loadFittingDataP2 import getData
+from lassoData import *
+import matplotlib
 import matplotlib.pyplot as plt
 import math
 from sklearn.linear_model import Lasso
 
-def plot(X, Y, reg_func):
+def plot(train_X, train_Y, valid_X, valid_Y, test_X, test_Y, reg_func, reg_func2, reg_func3):
     dx = 0.01
-    x_cont = np.arange(min(X), max(X) + dx, dx)
-    y_pred = [reg_func(x) for x in x_cont]
-    y_original = [math.cos(math.pi * x) + 1.5 * math.cos(2 * math.pi * x) for x in x_cont]
+    train_X = list(train_X)
+    train_Y = list(train_Y)
+    valid_X = list(valid_X)
+    valid_Y = list(valid_Y)
+    test_X = list(test_X)
+    test_Y = list(test_Y)
+    x_cont = np.arange(min(valid_X + train_X + test_X), max(valid_X + train_X + test_X) + dx, dx)
+    y_pred1 = [reg_func(x) for x in x_cont]
+    y_pred2 = [reg_func2(x) for x in x_cont]
+    y_pred3 = [reg_func3(x) for x in x_cont]
+    y_original = [5.646300000000000100e+00 * np.sin(0.4 * np.pi * x * 2)
+                  + 7.785999999999999600e-01 * np.sin(0.4 * np.pi * x * 3)
+                  + 8.108999999999999500e-01 * np.sin(0.4 * np.pi * x * 5)
+                  + 2.682700000000000100e+00 * np.sin(0.4 * np.pi * x * 6)
+                  for x in x_cont]
 
-    plt.plot(X, Y, 'o')
-    plt.plot(x_cont, y_pred)
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    fig.set_figheight(5)
+    fig.set_figwidth(5) 
+
+    ax = fig.add_subplot(1, 1, 1)
+
+    plt.plot(train_X, train_Y, 'o')
+    plt.plot(valid_X, valid_Y, 'o')
+    plt.plot(test_X, test_Y, 'o')
+
+    plt.plot(x_cont, y_pred1)
+    plt.plot(x_cont, y_pred2)
+    plt.plot(x_cont, y_pred3)
     plt.plot(x_cont, y_original)
+    plt.title(u'Linear Regression (M = 10, \u03BB = 0.1)')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.show()
@@ -27,8 +53,8 @@ def regression(X, Y, basis_funcs, lam=0, is_lasso=False):
     apply_X = np.transpose(apply_X_trans)
     m = len(basis_funcs)
 
-    if is_lasso:
-        lasso = Lasso(alpha=lam, fit_intercept=False, max_iter=100000)
+    if is_lasso and lam != 0.:
+        lasso = Lasso(alpha=lam, fit_intercept=False, max_iter=10000000)
         lasso.fit(apply_X, Y)
         w = lasso.coef_
     else:
@@ -37,7 +63,7 @@ def regression(X, Y, basis_funcs, lam=0, is_lasso=False):
     return w, apply_X
 
 def squared_error(X, Y, w):
-    squared_error = sum((X.dot(w) - Y) ** 2)
+    squared_error = np.mean((X.dot(w) - Y) ** 2)
     gradient = 2 * (X.dot(w) - Y).dot(X)
 
     return squared_error, gradient
@@ -74,20 +100,18 @@ def special_sin_regression(X, Y, M, lam=0, is_lasso=False):
 
     basis_funcs = [sin(i) for i in range(M)]
     w, apply_X = regression(X, Y, basis_funcs, lam, is_lasso)
+    print w
     reg_func = get_reg_func(w, basis_funcs)
 
     return w, apply_X, reg_func
 
 if __name__ == '__main__':
-    X, Y = getData(ifPlotData=False)
-    M = 13
-    lam = .001
-    is_lasso = True
-    w, apply_X, reg_func = special_sin_regression(X, Y, M, lam, is_lasso)
+    X, Y = lassoTrainData()
+    X2, Y2 = lassoValData()
+    X3, Y3 = lassoTestData()
 
-    print "Regression Weights (w):", w
-    squared_error, gradient = squared_error(apply_X, Y, w)
-    print "Squared Error:", squared_error
-    print "Gradient of Squared Error at w", gradient
+    w, apply_X, reg_func = special_sin_regression(X, Y, 13, 0, False)
+    w, apply_X, reg_func2 = special_sin_regression(X, Y, 13, 1e-5, False)
+    w2, apply_X2, reg_func3 = special_sin_regression(X, Y, 13, 1e-5, True)
 
-    plot(X, Y, reg_func)
+    plot(X, Y, X2, Y2, X3, Y3, reg_func, reg_func2, reg_func3)

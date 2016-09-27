@@ -8,9 +8,9 @@ import pylab as pl
 def getData(name):
     data = pl.loadtxt(name)
     # Returns column matrices
-    X = data[0:1].T
-    Y = data[1:2].T
-    return X, Y
+    X = data[0:1]
+    Y = data[1:2]
+    return X[0], Y[0]
 
 def lassoTrainData():
     return getData('lasso_train.txt')
