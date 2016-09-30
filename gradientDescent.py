@@ -1,12 +1,13 @@
 import pylab as pl
 import numpy as np
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import scipy.stats as sp
 import loadParametersP1
 import loadFittingDataP1
 import random
 import loadFittingDataP2
-from regression import poly_regression
+from regression import poly_regression, get_reg_func
 
 class NegativeGaussian():
     # The mean and covariance parameters must both be n x n arrays
@@ -85,11 +86,14 @@ def plot(X, Y, xlabel, ylabel, title):
 # stepSize must be a scalar
 # must be in 2 dimensions (or else I'll have to generalize this and I don't want to)
 def numericalGradient(function, X, stepSize):
-    xGuess = (function.value(X + np.array([0.5 * stepSize, 0])) - function.value(X - np.array([0.5 * stepSize, 0]))) / stepSize
-    yGuess = (function.value(X + np.array([0, 0.5 * stepSize])) - function.value(X - np.array([0, 0.5 * stepSize]))) / stepSize
-    guess = np.array([xGuess, yGuess])
+    guess = np.zeros(X.size)
+    for i in range(X.size):
+        dx = np.zeros(X.size)
+        dx[i] = 0.5 * stepSize
+        guess[i] = (function.value(X + dx) - function.value(X - dx)) / stepSize
     actual = function.gradient(X)
-    print "Guess is " + np.array_str(guess) + ", actual is " + np.array_str(actual)
+    # print "Guess is " + np.array_str(guess) + ", actual is " + np.array_str(actual)
+    print np.linalg.norm(guess-actual)
 
 class SumSquaredErrors():
     # Each row of X and y represents a single data sample
@@ -129,16 +133,17 @@ def stochasticGradientDescent(sse, initialGuess, threshold, stepSize):
         guess = guess - stepSize(t) * (2 * xPoint.T.dot(xPoint.dot(guess) - yPoint))
         t += 1
         # gradient = sse.gradient(guess)
-        if t % (batch_size * 10) == 0:
+        if t % (batch_size * 100) == 0:
             # print np.linalg.norm(gradient)
-            print guess
+            # print guess
             print max(pastObjectives), min(pastObjectives), max(pastObjectives) - min(pastObjectives)
             print t
     return guess, t
 
 ## Plot formatting
 
-font = {'family': 'serif', 'weight': 'normal', 'size':20}
+# font = {'family': 'serif', 'weight': 'normal', 'size':20}
+font = {'size':20}
 plt.rc('font', **font)
 
 
@@ -175,6 +180,34 @@ def stochasticGradientDescentWithPlot(sse, initialGuess, threshold, stepSize): #
     plot(np.arange(valueArray.size), valueArray, 'Trial Number', 'Objective Value Function (in millions)', 'Objective Value vs. Trial Number')
 
     return guess, t
+
+def plot2(X, Y, reg_func, reg_func2, M):
+    dx = 0.01
+    X = list(X)
+    Y = list(Y)
+    x_cont = np.arange(min(X), max(X) + dx, dx)
+    y_pred1 = [reg_func(x) for x in x_cont]
+    y_pred2 = [reg_func2(x) for x in x_cont]
+    # y_pred3 = [reg_func3(x) for x in x_cont]
+    # y_original = [np.cos(np.pi * x) + np.cos(2 * np.pi * x) for x in x_cont]
+
+    fig = plt.figure(1)
+    fig.patch.set_facecolor('white')
+    fig.set_figheight(5)
+    fig.set_figwidth(5) 
+
+    ax = fig.add_subplot(1, 1, 1)
+
+    plt.plot(X, Y, 'o')
+
+    plt.plot(x_cont, y_pred1, 'c')
+    # plt.plot(x_cont, y_original)
+    plt.plot(x_cont, y_pred2, 'm')
+    # plt.plot(x_cont, y_pred3)
+    plt.title(u'Solution by Gradient Descent (M = ' + str(M) + ')')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.show()
 
 if __name__ == '__main__':
     gaussMean,gaussCov,quadBowlA,quadBowlB = loadParametersP1.getData()
@@ -241,46 +274,58 @@ if __name__ == '__main__':
     # numericalGradient(quad, np.array([100,50]), 1)
 
     # NUMBER 3
-    X, y = loadFittingDataP1.getData()
-    sse = SumSquaredErrors(X, y)
-    stepSize = lambda t: 6e-3 * ((t + 100) ** -.99)
-    # w, trials = gradientDescent(sse, np.zeros(10), .00001, 1, False)
-    stoch_w, stoch_trials = stochasticGradientDescent(sse, np.zeros(10), 10, stepSize)
-    # stoch_w, stoch_trials = stochasticGradientDescentWithPlot(sse, np.zeros(10), 100, stepSize)
-    actual_w = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(y)
-    print sse.value(actual_w)
+    # X, y = loadFittingDataP1.getData()
+    # sse = SumSquaredErrors(X, y)
+    # stepSize = lambda t: 6e-3 * ((t + 100) ** -.99)
+    # # w, trials = gradientDescent(sse, np.zeros(10), .00001, 1, False)
+    # stoch_w, stoch_trials = stochasticGradientDescent(sse, np.zeros(10), 10, stepSize)
+    # # stoch_w, stoch_trials = stochasticGradientDescentWithPlot(sse, np.zeros(10), 100, stepSize)
+    # actual_w = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(y)
     # print sse.value(actual_w)
-    # print "diff is " + str(np.linalg.norm(w - actual_w) / np.linalg.norm(actual_w))
-    print "diff is " + str(np.linalg.norm(stoch_w - actual_w) / np.linalg.norm(actual_w))
+    # # print sse.value(actual_w)
+    # # print "diff is " + str(np.linalg.norm(w - actual_w) / np.linalg.norm(actual_w))
+    # print "diff is " + str(np.linalg.norm(stoch_w - actual_w) / np.linalg.norm(actual_w))
+    # # print stoch_w
+    # # print w
+    # # print sse.value(w)
+    # # print trials
     # print stoch_w
-    # print w
-    # print sse.value(w)
-    # print trials
-    print stoch_w
-    print sse.value(stoch_w)
-    print stoch_trials
+    # print sse.value(stoch_w)
+    # print stoch_trials
 
     # SECOND QUESTION
-    # X, Y = loadFittingDataP2.getData(ifPlotData=False)
-    # M = 5
-    # w, apply_X, reg_func = poly_regression(X,Y,M)
-    # sse = SumSquaredErrors(apply_X,Y)
+    X, Y = loadFittingDataP2.getData(ifPlotData=False)
+    M = 10
+    w, apply_X, reg_func = poly_regression(X,Y,M)
+    sse = SumSquaredErrors(apply_X,Y)
 
-    # numerical_w, trials = gradientDescent(sse, np.arange(M+1), .052, 1e-4, False)
-    # print "diff is " + str(np.linalg.norm(numerical_w - w) / np.linalg.norm(w))
-    # print numerical_w
-    # print sse.value(numerical_w)
-    # print w
-    # print sse.value(w)
-    # print trials
+    # numericalGradient(sse, np.array([-100000,0,0,0,0,0]), 1)
+    # numericalGradient(sse, np.array([10, 100, 1000]), 1)
+    # numericalGradient(sse, np.array([-500, -200, 100]), 1)
+
+    def power(i):
+        return lambda a: a ** i
+    initial = np.zeros(M+1)
+    numerical_w, trials = gradientDescent(sse, initial, .044, 4e-4, False)
+    print "finished"
+    stoch_w, stoch_trials = stochasticGradientDescent(sse, initial, 2.5e-4, lambda t: 200 * (t + 1000) ** -.9999)
+    print "diff is " + str(np.linalg.norm(numerical_w - w) / np.linalg.norm(w))
+    print "diff is " + str(np.linalg.norm(stoch_w - w) / np.linalg.norm(w))
+    print "batch gives " + str(numerical_w) + " with value " + str(sse.value(numerical_w)) + " in trials " + str(trials)
+    print "sgd gives " + str(stoch_w) + " with value " + str(sse.value(stoch_w)) + " in trials " + str(stoch_trials)
+    print "actual gives " + str(w) + " with value " + str(sse.value(w))
+    reg_func1 = get_reg_func(numerical_w, [power(i) for i in range(M + 1)])
+    reg_func2 = get_reg_func(stoch_w, [power(i) for i in range(M + 1)])
+    plot2(X, Y, reg_func1, reg_func2, M)
 
     #lambda t: 400 * (t + 1000) ** -.9999
+    #lambda t: 1e4 * (t + 1e6) ** -.999
     # initial = np.zeros(M+1)
-    # numerical_w, trials = stochasticGradientDescent(sse, initial, .000001, lambda t: 1e4 * (t + 1e6) ** -.999)
+    # numerical_w, trials = stochasticGradientDescent(sse, initial, .0001, lambda t: 400 * (t + 1000) ** -.9999)
     # print "diff is " + str(np.linalg.norm(numerical_w - w) / np.linalg.norm(w))
     # print numerical_w
     # print sse.value(numerical_w)
     # print w
     # print sse.value(w)
     # print trials
-    # print w
+    print w
